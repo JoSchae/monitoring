@@ -1,0 +1,13 @@
+services:
+  token-manager:
+    image: johannesschaefer/monitoring-token-manager:prod
+
+  prometheus:
+    image: johannesschaefer/monitoring-prometheus:prod
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: johannesschaefer/monitoring-grafana:prod
+    ports:
+      - "3001:3000"

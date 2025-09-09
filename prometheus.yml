@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # NestJS application metrics
+  - job_name: 'nestjs'
+    static_configs:
+      - targets: ['192.168.2.142:3000']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    # Token will be automatically injected by token-manager service
+
+  # MongoDB Exporter metrics
+  - job_name: 'mongodb-exporter'
+    static_configs:
+      - targets: ['192.168.2.142:9216']
+    scrape_interval: 30s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

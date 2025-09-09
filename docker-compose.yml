@@ -1,0 +1,83 @@
+services:
+  token-manager:
+    image: johannesschaefer/monitoring-token-manager:${TAG:-dev}
+    build:
+      context: ./token-manager
+      dockerfile: Dockerfile
+    container_name: token-manager
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - prometheus_config:/etc/prometheus
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+
+  init-config:
+    image: busybox
+    container_name: init-prometheus-config
+    volumes:
+      - ./prometheus.yml:/tmp/prometheus.yml:ro
+      - prometheus_config:/etc/prometheus
+    command: |
+      sh -c "
+        cp /tmp/prometheus.yml /etc/prometheus/prometheus.yml
+        echo 'Initial Prometheus config copied'
+      "
+
+  prometheus:
+    image: johannesschaefer/monitoring-prometheus:${TAG:-dev}
+    build:
+      context: .
+      dockerfile: ./dockerfiles/prometheus/Dockerfile
+    container_name: prometheus-monitoring
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    restart: unless-stopped
+    volumes:
+      - prometheus_config:/etc/prometheus
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    depends_on:
+      - init-config
+
+  grafana:
+    image: johannesschaefer/monitoring-grafana:${TAG:-dev}
+    build:
+      context: .
+      dockerfile: ./dockerfiles/grafana/Dockerfile
+    container_name: grafana-monitoring
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+    ports:
+      - "3001:3000"
+
+volumes:
+  prometheus_config:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitoring:
+    driver: bridge
