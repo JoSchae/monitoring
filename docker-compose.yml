@@ -20,15 +20,19 @@ services:
   init-config:
     image: busybox
     container_name: init-prometheus-config
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - NESTJS_TARGET=${NESTJS_TARGET:-nginx:80}
     volumes:
-      - ./prometheus.yml:/tmp/prometheus.yml:ro
+      - ./prometheus.template.yml:/tmp/prometheus.template.yml:ro
       - ./alerts.yml:/tmp/alerts.yml:ro
       - prometheus_config:/etc/prometheus
     command: |
       sh -c "
-        cp /tmp/prometheus.yml /etc/prometheus/prometheus.yml
+        sed 's/ENVIRONMENT_PLACEHOLDER/${ENVIRONMENT}/g; s/NESTJS_TARGET_PLACEHOLDER/${NESTJS_TARGET}/g' /tmp/prometheus.template.yml > /etc/prometheus/prometheus.yml
         cp /tmp/alerts.yml /etc/prometheus/alerts.yml
-        echo 'Initial Prometheus config and alerts copied'
+        echo 'Prometheus config generated for environment: ${ENVIRONMENT}'
+        echo 'NestJS target: ${NESTJS_TARGET}'
       "
 
   prometheus:
@@ -49,8 +53,6 @@ services:
     volumes:
       - prometheus_config:/etc/prometheus
       - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
     networks:
       - monitoring
     extra_hosts:
@@ -77,8 +79,6 @@ services:
     depends_on:
       - prometheus
       - loki
-    ports:
-      - "3001:3000"
 
   loki:
     image: grafana/loki:3.0.0
@@ -90,8 +90,6 @@ services:
       - loki_data:/loki
     networks:
       - monitoring
-    ports:
-      - "3100:3100"
 
   promtail:
     image: grafana/promtail:3.0.0
@@ -117,4 +115,5 @@ volumes:
 
 networks:
   monitoring:
+    name: monitoring
     driver: bridge

@@ -1,6 +1,8 @@
 services:
   token-manager:
     command: ["python", "main.py"]
+    ports:
+      - "8080:8080"
 
   prometheus:
     ports:
@@ -9,3 +11,7 @@ services:
   grafana:
     ports:
       - "3001:3000"
+
+  loki:
+    ports:
+      - "3100:3100"

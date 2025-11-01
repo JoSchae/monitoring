@@ -340,8 +340,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(http_requests_total{job=\"nestjs\"}[5m])) * 300 or vector(0)",
-          "legendFormat": "__auto",
+          "expr": "sum(rate(http_requests_total{job=\"nestjs\",status_code=~\"4..|5..\"}[5m])) * 300 or vector(0)",
+          "legendFormat": "",
           "range": true,
           "refId": "A"
         }
