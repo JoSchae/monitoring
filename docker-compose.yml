@@ -12,6 +12,8 @@ services:
       - prometheus_config:/etc/prometheus
     networks:
       - monitoring
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - prometheus
 
@@ -20,11 +22,13 @@ services:
     container_name: init-prometheus-config
     volumes:
       - ./prometheus.yml:/tmp/prometheus.yml:ro
+      - ./alerts.yml:/tmp/alerts.yml:ro
       - prometheus_config:/etc/prometheus
     command: |
       sh -c "
         cp /tmp/prometheus.yml /etc/prometheus/prometheus.yml
-        echo 'Initial Prometheus config copied'
+        cp /tmp/alerts.yml /etc/prometheus/alerts.yml
+        echo 'Initial Prometheus config and alerts copied'
       "
 
   prometheus:
@@ -49,6 +53,8 @@ services:
       - "9090:9090"
     networks:
       - monitoring
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - init-config
 
@@ -70,13 +76,44 @@ services:
       - monitoring
     depends_on:
       - prometheus
+      - loki
     ports:
       - "3001:3000"
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki-monitoring
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - monitoring
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: promtail-monitoring
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail_data:/tmp
+    networks:
+      - monitoring
+    depends_on:
+      - loki
 
 volumes:
   prometheus_config:
   prometheus_data:
   grafana_data:
+  loki_data:
+  promtail_data:
 
 networks:
   monitoring:

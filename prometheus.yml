@@ -3,14 +3,16 @@ global:
   evaluation_interval: 15s
 
 rule_files:
-  # - "first_rules.yml"
-  # - "second_rules.yml"
+  - "alerts.yml"
 
 scrape_configs:
   # NestJS application metrics
   - job_name: 'nestjs'
     static_configs:
-      - targets: ['192.168.2.142:3000']
+      - targets: ['nginx:80']
+        labels:
+          service: 'nestjs-server'
+          environment: 'local'
     metrics_path: /metrics
     scrape_interval: 30s
     # Token will be automatically injected by token-manager service

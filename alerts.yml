@@ -1,0 +1,157 @@
+# Prometheus Alert Rules for NestJS Server
+# Save as monitoring/alerts.yml and reference in prometheus.yml
+
+groups:
+  - name: nestjs_alerts
+    interval: 30s
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: rate(http_errors_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "HTTP error rate is {{ $value }} errors/sec (threshold: 10/sec) on {{ $labels.route }}"
+
+      # Failed Login Attack Alert
+      - alert: BruteForceAttack
+        expr: rate(auth_login_failures_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Possible brute force attack detected"
+          description: "Failed login rate is {{ $value }}/sec (threshold: 5/sec). Reason: {{ $labels.reason }}"
+
+      # Slow Database Queries
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(db_query_duration_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "Database queries are slow"
+          description: "95th percentile query time is {{ $value }}s on {{ $labels.collection }} ({{ $labels.operation }})"
+
+      # Database Connection Pool Exhaustion
+      - alert: DatabaseConnectionPoolExhaustion
+        expr: database_connections_available{job="nestjs"} < 2
+        for: 2m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Only {{ $value }} database connections available"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "High memory usage detected"
+          description: "Heap usage is {{ $value | humanizePercentage }} of total heap"
+
+      # Event Loop Lag
+      - alert: HighEventLoopLag
+        expr: nodejs_eventloop_lag_seconds > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High event loop lag"
+          description: "Event loop lag is {{ $value }}s (threshold: 0.1s). Application may be blocking."
+
+      # Low Cache Hit Rate
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            sum(rate(cache_hits_total[5m])) / 
+            (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))
+          ) < 0.5
+        for: 10m
+        labels:
+          severity: info
+          team: backend
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 50%)"
+
+      # High Request Latency
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_bucket{job="nestjs"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High request latency detected"
+          description: "95th percentile response time is {{ $value }}s on {{ $labels.route }}"
+
+      # Service Down
+      - alert: ServiceDown
+        expr: up{job="nestjs"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: devops
+        annotations:
+          summary: "NestJS service is down"
+          description: "NestJS server at {{ $labels.instance }} has been down for more than 1 minute"
+
+      # High User Registration Failure Rate
+      - alert: HighRegistrationFailureRate
+        expr: |
+          (
+            rate(user_registrations_total{status="failure"}[5m]) / 
+            rate(user_registrations_total[5m])
+          ) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High user registration failure rate"
+          description: "{{ $value | humanizePercentage }} of registrations are failing"
+
+      # Database Query Errors
+      - alert: DatabaseQueryErrors
+        expr: rate(db_query_errors_total{job="nestjs"}[5m]) > 1
+        for: 2m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "Database query errors detected"
+          description: "{{ $value }} database errors/sec on {{ $labels.collection }} ({{ $labels.operation }}): {{ $labels.error_type }}"
+
+      # Capacity Warning - Approaching User Limit
+      - alert: ApproachingUserCapacity
+        expr: active_users_total > 400
+        for: 5m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "Approaching designed user capacity"
+          description: "{{ $value }} active users (capacity: 500). Consider scaling."
+
+      # Token Validation Failures
+      - alert: HighTokenValidationFailures
+        expr: rate(auth_token_validations_total{status!="valid"}[5m]) > 5
+        for: 3m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High rate of invalid token validations"
+          description: "{{ $value }} invalid/expired tokens per second"
